@@ -1,0 +1,85 @@
+blueprint:
+  name: Non-Blocking Schedule Thermostat
+  description: Depends on a couple of helpers. One boolean to know if we set the thermostat at eco, another boolean to know if we skip the end setting, One input_datetime to know when we start eco mode and one input_datetime to know when we select comfort again. 
+  domain: automation
+  input:
+    bool:
+      name: Check
+      description: Check before triggering the schedule if we want to use the automation ( more usefull to switch one entity instead many).
+      selector:
+        entity:
+          domain: input_boolean
+    eco:
+      name: Begin Eco
+      description: Time to put the thermostat in eco mode.
+      selector:
+        time:
+    comfort:
+      name: Begin Comfort
+      description: Time to put the thermostat in comfort mode.
+      selector:
+        time:
+    thermostat:
+      name: Thermostat
+      description: Entity to control.
+      selector:
+        entity:
+          domain: climate
+          multiple: true
+    comfort_temp:
+      name: Comfort
+      description: Temperature to set the comfort mode.
+      selector:
+        number:
+          min: 15
+          max: 25
+    skip_end:
+      name: Critical peak detection
+      description: Binary sensor that will tell the automation to not send the comfort command to prevent the mixup with another automation.
+      selector:
+        entity:
+          domain: binary_sensor
+          
+          
+trigger:
+  - platform: time
+    at: !input comfort
+    id: Comfort
+  - platform: time
+    at: !input eco
+    id: Eco
+condition:
+  - condition: state
+    entity_id: !input bool
+    state: "on"
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: Eco
+        sequence:
+          - service: climate.set_preset_mode
+            data:
+              preset_mode: Energy heat
+            target:
+              entity_id: !input thermostat
+      - conditions:
+          - condition: and
+            conditions:
+              - condition: trigger
+                id: Comfort
+              - condition: state
+                entity_id: !input skip_end
+                state: "off"
+        sequence:
+          - service: climate.set_preset_mode
+            data:
+              preset_mode: none
+            target:
+              entity_id: !input thermostat
+          - service: climate.set_temperature
+            data:
+              temperature: !input comfort_temp
+    default:
+      - stop: Trigget reason is not set
+mode: single

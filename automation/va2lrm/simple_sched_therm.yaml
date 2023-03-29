@@ -1,0 +1,65 @@
+blueprint:
+  name: Simple Schedule Thermostat
+  description: Depends on a couple of helpers. One boolean to know if we set the thermostat at eco, One input_datetime to know when we start eco mode and one input_datetime to know when we select comfort again. 
+  domain: automation
+  input:
+    bool:
+      name: Check
+      description: Check before triggering the schedule if we want to use the automation ( more usefull to switch one entity instead many).
+      selector:
+        entity:
+          domain: input_boolean
+    start:
+      name: Begin Eco
+      description: Time to put the thermostat in eco mode.
+      selector:
+        time:
+    end:
+      name: End Eco
+      description: Time to put the thermostat in comfort mode.
+      selector:
+        time:
+    thermostat:
+      name: Thermostat
+      description: Entity to control.
+      selector:
+        entity:
+          domain: climate
+          multiple: true
+    comfort:
+      name: Comfort
+      description: Temperature to set the comfort mode.
+      selector:
+        number:
+          min: 15
+          max: 25
+
+mode: parallel
+
+trigger:
+  platform: time
+  at: !input start
+condition:
+  condition: state
+  entity_id: !input bool
+  state: "on" 
+action:
+  - service: climate.set_preset_mode
+    data:
+      preset_mode: Energy heat
+    target:
+      entity_id: !input thermostat
+  - wait_for_trigger:
+      - platform: time
+        at: !input end
+    continue_on_timeout: false
+  - service: climate.set_preset_mode
+    data:
+      preset_mode: none
+    target:
+      entity_id: !input thermostat
+  - service: climate.set_temperature
+    data:
+      temperature: !input comfort
+    target:
+      entity_id: !input thermostat
