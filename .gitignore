@@ -1,4 +1,5 @@
-/adchevrier/
-/homeassistant/
-/hydroqc/
-#eof
+*
+!*/
+# Whitelist
+!.gitignore
+!**/va2lrm/
